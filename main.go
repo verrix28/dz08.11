@@ -1,68 +1,96 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
-type Delivery interface {
-	Cost() float64
-	Info() string
+type Product struct {
+	ID       int
+	Name     string
+	Category string
+	Price    float64
+	Stock    int
 }
-type Courier struct {
-	km float64
+type User struct {
+	ID      int
+	Name    string
+	Balance float64
 }
-
-func (c *Courier) Cost() float64 {
-	return c.km * 50
+type Payment interface {
+	Pay(amount float64)
 }
-func (c *Courier) Info() string {
-	return "Курьер"
-}
-
-type Pickup struct {
-	price float64
-}
-
-func (p *Pickup) Cost() float64 {
-	return p.price
-}
-func (p *Pickup) Info() string {
-	return "Пункт выдачи"
+type Card struct {
 }
 
-type Post struct {
-	kg float64
+func (c *Card) Pay(amount float64) {
+	fmt.Println("Оплата картой:", amount)
 }
 
-func (p *Post) Cost() float64 {
-	return p.kg * 300
-}
-func (p *Post) Info() string {
-	return "Почта"
+type Cash struct {
 }
 
-type Order struct {
-	Number       int
-	Address      string
-	Weight       float64
-	ProductsCost float64
-	Delivery     Delivery
+func (c *Cash) Pay(amount float64) {
+	fmt.Println("Оплата наличными:", amount)
 }
 
-func PrintOrderInfo(o Order) {
-	total := o.ProductsCost + o.Delivery.Cost()
-	fmt.Println(o.Delivery.Info(), "Стоимость доставки:", o.Delivery.Cost(), "Итого:", total)
+type Crypto struct {
+}
+
+func (c *Crypto) Pay(amount float64) {
+	fmt.Println("Оплата криптой:", amount)
 }
 func main() {
-	courier := new(Courier)
-	courier.km = 15.0
+	catalog := map[int]Product{
+		1: {1, "Ноутбук", "Электроника", 80000, 5},
+		2: {2, "Мышь", "Электроника", 1500, 20},
+		3: {3, "Книга", "Книги", 700, 10},
+	}
+	catalog[4] = Product{4, "Клавиатура", "Электроника", 3000, 15}
+	p2 := catalog[2]
+	p2.Price = 1200
+	catalog[2] = p2
+	fmt.Println("Товар по ID 1:", catalog[1].Name)
+	for _, p := range catalog {
+		if p.Name == "Книга" {
+			fmt.Println("Найдено:", p.Name)
+		}
+	}
+	delete(catalog, 4)
 
-	pickup := new(Pickup)
-	pickup.price = 200.0
-	post := new(Post)
-	post.kg = 2.5
-	o1 := Order{101, "ул. Ленина 1", 5.0, 1500, courier}
-	o2 := Order{102, "ул. Пушкина 2", 2.5, 800, pickup}
-	o3 := Order{103, "ул. Гоголя 3", 2.5, 1200, post}
-	PrintOrderInfo(o1)
-	PrintOrderInfo(o2)
-	PrintOrderInfo(o3)
+	totalStock := 0.0
+	for _, p := range catalog {
+		totalStock += p.Price * float64(p.Stock)
+	}
+	fmt.Println("Стоимость склада:", totalStock)
+
+	user := User{1, "Иван", 100000}
+	cart := make(map[int]int)
+	cart[1] = 1
+	cart[2] = 3
+	cart[2] = 2
+	delete(cart, 1)
+
+	var orderTotal float64
+	canBuy := true
+	for id, qty := range cart {
+		if catalog[id].Stock < qty {
+			canBuy = false
+		}
+		orderTotal += catalog[id].Price * float64(qty)
+	}
+	if user.Balance < orderTotal {
+		canBuy = false
+	}
+
+	if canBuy {
+		pay := new(Card)
+		pay.Pay(orderTotal)
+		for id, qty := range cart {
+			p := catalog[id]
+			p.Stock -= qty
+			catalog[id] = p
+		}
+		user.Balance -= orderTotal
+		fmt.Println("Остаток:", user.Balance)
+	}
 }
